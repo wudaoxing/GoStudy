@@ -1,6 +1,22 @@
+<!-- vscode-markdown-toc -->
+* 1. [什么是Docker](#Docker)
+* 2. [为什么要用Docker](#Docker-1)
+* 3. [镜像（Image）](#Image)
+* 4. [容器（Container）](#Container)
+* 5. [仓库（Repository）](#Repository)
+* 6. [从仓库获取镜像](#)
+* 7. [管理本地主机上的镜像](#-1)
+* 8. [启动](#-1)
+
+<!-- vscode-markdown-toc-config
+	numbering=true
+	autoSave=true
+	/vscode-markdown-toc-config -->
+<!-- /vscode-markdown-toc -->
 学习网址：https://yeasy.gitbook.io/docker_practice/
+
 # Docker简介
-## 什么是Docker
+##  1. <a name='Docker'></a>什么是Docker
 ![](images/Docker架构.png)  
 * Docker
   * 使用Go语言进行开发实现；
@@ -17,7 +33,7 @@
   * 容器内的应用进程直接运行于宿主的内核，容器内没有自己的内核，而且也没有进行硬件虚拟。因此容器要比传统虚拟机更为轻便。
 
 
-## 为什么要用Docker
+##  2. <a name='Docker-1'></a>为什么要用Docker
 Docker跟传统的虚拟化方式相比具有众多的优势：
 * 更高效的利用系统资源  
   原因：容器不需要进行硬件虚拟以及运行完整操作系统等额外开销。  
@@ -37,7 +53,7 @@ Docker跟传统的虚拟化方式相比具有众多的优势：
 
 
 # 基本概念
-## 镜像（Image） 
+##  3. <a name='Image'></a>镜像（Image） 
   * 操作系统分为内核和用户空间
   * 对于Linux，内核启动后，会挂载root文件系统为其提供用户空间支持
   * Docker镜像（Image）  
@@ -56,7 +72,7 @@ Docker跟传统的虚拟化方式相比具有众多的优势：
         * 因此，在构建镜像的时候，需要额外小心，每一层尽量只包含该层需要添加的东西，任何额外的东西应该在该层构建结束前清理掉。
     * 分层存储的特征使得镜像的复用、定制变的更为容易。
       * 甚至可以用之前构建好的镜像作为基础层，然后进一步添加新的层，以定制自己所需的内容，构建新的镜像。
-## 容器（Container）
+##  4. <a name='Container'></a>容器（Container）
   * 镜像和容器的关系
     * 就像是面向对象程序设计中的类和实例一样，镜像是静态的定义，容器是镜像运行时的实体。
     * 容器可以被创建、启动、停止、删除、暂停等
@@ -75,7 +91,7 @@ Docker跟传统的虚拟化方式相比具有众多的优势：
         * 所有的文件写入操作，都应该使用 数据卷（Volume）、或者 绑定宿主目录，在这些位置的读写会跳过容器存储层，直接对宿主（或网络存储）发生读写，其性能和稳定性更高。
             * 数据卷的生存周期独立于容器，容器消亡，数据卷不会消亡。
               * 因此，使用数据卷后，容器删除或者重新运行之后，数据却不会丢失。
-## 仓库（Repository）
+##  5. <a name='Repository'></a>仓库（Repository）
   * Docker Registry
     * 一个集中的存储、分发镜像的服务
       使用场景：镜像构建完成后，可以很容易的在当前宿主机上运行，但是，如果需要在其它服务器上使用这个镜像时
@@ -142,7 +158,7 @@ Docker分为stable、 test和nightly三个更新频道
 
 # 使用镜像
 Docker 运行容器前需要本地存在对应的镜像，如果本地不存在该镜像，Docker 会从镜像仓库下载该镜像。
-## 从仓库获取镜像
+##  6. <a name=''></a>从仓库获取镜像
 * 从 Docker 镜像仓库获取镜像的命令是 docker pull
 ```
 $ docker pull [选项] [Docker Registry 地址[:端口号]/]仓库名[:标签]
@@ -161,7 +177,7 @@ $ docker pull ubuntu:18.04
     ```
     * docker run 就是运行容器的命令
     * exit退出容器
-## 管理本地主机上的镜像
+##  7. <a name='-1'></a>管理本地主机上的镜像
 * 列出已经下载的镜像
   ```
   $ docker image ls
@@ -183,7 +199,7 @@ $ docker pull ubuntu:18.04
     ```
 
 # 操作容器
-## 启动
+##  8. <a name='-1'></a>启动
 * 当利用 docker run 来创建容器时，Docker 在后台运行的标准操作包括：
   * 检查本地是否存在指定的镜像，不存在就从 registry 下载
   * 利用镜像创建并启动一个容器
