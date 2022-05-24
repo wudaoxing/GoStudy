@@ -13,6 +13,8 @@
   - [2.4 如何确定延迟语句的参数](#24-如何确定延迟语句的参数)
   - [2.5 闭包是什么](#25-闭包是什么)
   - [2.6 延迟语句如何配合恢复语句](#26-延迟语句如何配合恢复语句)
+  - [2.7 defer链如何被遍历执行（<font color="red"> 着实没看懂</font>）](#27-defer链如何被遍历执行font-colorred-着实没看懂font)
+  - [2.8 为什么无法从父goroutine恢复子goroutine的panic](#28-为什么无法从父goroutine恢复子goroutine的panic)
 
 <!-- /TOC -->
 # 第1章 逃逸分析
@@ -155,3 +157,45 @@ return xxx
   * 闭包捕获的变量和常量是引用传递，不是值传递
 
 ## 2.6 延迟语句如何配合恢复语句
+* 函数总是会返回一个error，留给调用者处理
+* panic会停掉当前正在执行的程序，而不只是当前线程。
+  * 在这之前，它会有序地执行完当前线程defer列表里的语句，其他协程里定义的defer语句不做保证。  
+    * 所以在defer里定义一个recover语句，防止程序直接挂掉，就可以起到类似Java里try...catch的效果
+    * recover()函数只在defer的函数中直接调用才有效
+      ```go
+      defer recover()   //不行，要在defer函数里调用recover
+      defer func(){
+        defer func(){
+          recover()
+        }()
+      }()               //不行，多重defer嵌套
+      ```
+
+## 2.7 defer链如何被遍历执行（<font color="red"> 着实没看懂</font>）
+* 被defered的函数，以“先进后出”的顺序，在RET指令前得以执行。
+* 在一条函数调用链中，多个函数中会出现多个defer语句。  
+  例如：a()→b()→c()中，每个函数里都有defer语句，
+  * 这些defer语句会创建对应个数的_defer结构体，多个_defer结构体形成一个链表，G结构体中某个字段指向此链表。
+  * defer语句会先调用deferporc函数，new一个_defer结构体，挂到G上。
+  * 调用new之前会优先从当前G所绑定的P的defer pool里取，没取到则会去全局的defer pool里取，实在没有的话才新建一个。（这是Go runtime里非常常见的操作，即设置多级缓冲，提升运行效率）
+* 在执行RET指令之前，调用deferreturn函数完成_defer链表的遍历，执行完这条链上所有被defered的函数。
+  * 在deferreturn函数的最后，会使用jmpdefer跳转到之前被defered的函数，这时控制权从runtime转移到了用户自定义的函数
+* 在构造_defer结构体的时候，需要将当前函数的SP(栈顶指针)、被defered的函数指针保存到_defer结构体中。
+  * 并且会将被defered的函数所需要的参数复制到和_defer结构体相邻的位置
+  * 在调用被defered的函数的时候，用的就是这时被复制的值，相当于使用了它的一个“快照”，如果此参数不是指针或引用类型的话，会产生一些意料之外的bug
+* 每执行完一个被defered的函数后，都会将_defer结构体从链表中删除并回收
+
+## 2.8 为什么无法从父goroutine恢复子goroutine的panic
+* 一般的说，也就是为什么无法recover其他goroutine里产生的panic？  
+  * 可以简单地认为是设计使然：因为goroutine被设计为一个独立的代码执行单元，拥有自己的执行栈，不与其他goroutine共享任何数据。这意味着，无法让goroutine拥有返回值、也无法让goroutine拥有自身的ID编号等。
+  * 若需要与其他的goroutine产生交互，要么可以使用channel的方式与其他goroutine进行通信，要么通过共享内存同步方式对共享的内存添加读写锁
+  * 不完美的办法：  
+    如果希望有一个全局的恐慌捕获中心，可以创建一个恐慌通知channel，并在产生恐慌时，通过recover字段将其恢复，并将发生的错误通过channel通知给这个全局的恐慌通知器
+  * 根本途径
+    提高程序员自身对语言的认识，多进行代码测试，以及多通过运维技术来增强容灾机制。
+* 为什么希望从父goroutine中恢复子goroutine内产生的panic？  
+  如果以下的情况发生在应用程序内，那么整个进程必然退出：
+  ```go
+  go func() {panic("die die die")}() 
+  //上面的代码是显式的panic，实际情况下，如果不注意编码规范，极有可能触发一些本可以避免的恐慌错误，例如访问越界
+  ```
